@@ -10,7 +10,7 @@ import org.apache.http.util.EntityUtils;
 import java.io.IOException;
 
 /**
- * @description:
+ * @description:  使用HttpClient 访问http://localhost:8801
  * @author: chenrq
  * @date: 2020年10月28日 19时23分
  */
@@ -29,6 +29,17 @@ public class HttpClientDemo {
             }
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            try {
+                if (httpClient != null) {
+                    httpClient.close();
+                }
+                if (response != null) {
+                    response.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 }
