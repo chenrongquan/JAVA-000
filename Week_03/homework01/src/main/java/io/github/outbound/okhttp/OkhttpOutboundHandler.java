@@ -1,6 +1,8 @@
 package io.github.outbound.okhttp;
 
 import io.github.outbound.httpclient4.NamedThreadFactory;
+import io.github.router.HttpEndpointRouter;
+import io.github.router.MyEndpointRouter;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -10,6 +12,8 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.*;
 
 import static io.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
@@ -22,12 +26,18 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
  * @date: 2020年11月02日 11时49分
  */
 public class OkhttpOutboundHandler {
-    private String backendUrl;
+    private List<String> backendUrls;
     private ExecutorService proxyService;
     private OkHttpClient httpClient;
+    private HttpEndpointRouter router;
 
     public OkhttpOutboundHandler(String backendUrl) {
-        this.backendUrl = backendUrl.endsWith("/") ? backendUrl.substring(0, backendUrl.length() - 1) : backendUrl;
+        String[] urls = backendUrl.split(";");
+        backendUrls = new ArrayList<String>(urls.length);
+        for (String url : urls) {
+            url = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+            backendUrls.add(url);
+        }
         int cores = Runtime.getRuntime().availableProcessors() * 2;
         int keepAliveTime = 1000;
         int queueSize = 2048;
@@ -41,21 +51,20 @@ public class OkhttpOutboundHandler {
                 new NamedThreadFactory("proxyService"),
                 handler
         );
+        this.router = new MyEndpointRouter();
         this.httpClient = new OkHttpClient();
     }
 
     public void handle(final FullHttpRequest fullRequest, final ChannelHandlerContext ctx) {
-        final String url = this.backendUrl + fullRequest.uri();
+        final String url = router.route(this.backendUrls) + fullRequest.uri();
         proxyService.submit(() -> fetchGet(fullRequest, ctx, url));
     }
 
     public void fetchGet(final FullHttpRequest fullRequest, final ChannelHandlerContext ctx, final String url) {
-        HttpHeaders headers = fullRequest.headers();
         Request.Builder builder = new Request.Builder();
-        // 处理特定的请求头
-        if (headers.contains("nio")) {
-            builder.addHeader("nio", headers.get("nio"));
-        }
+        fullRequest.headers().forEach(map -> {
+            builder.addHeader(map.getKey(), map.getValue());
+        });
         Request request = builder.url(url).build();
         try {
             Response response = httpClient.newCall(request).execute();
