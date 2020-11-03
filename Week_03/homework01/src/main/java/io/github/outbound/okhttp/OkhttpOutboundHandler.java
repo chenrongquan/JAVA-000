@@ -4,10 +4,7 @@ import io.github.outbound.httpclient4.NamedThreadFactory;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http.HttpUtil;
+import io.netty.handler.codec.http.*;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -53,7 +50,13 @@ public class OkhttpOutboundHandler {
     }
 
     public void fetchGet(final FullHttpRequest fullRequest, final ChannelHandlerContext ctx, final String url) {
-        Request request = new Request.Builder().url(url).build();
+        HttpHeaders headers = fullRequest.headers();
+        Request.Builder builder = new Request.Builder();
+        // 处理特定的请求头
+        if (headers.contains("nio")) {
+            builder.addHeader("nio", headers.get("nio"));
+        }
+        Request request = builder.url(url).build();
         try {
             Response response = httpClient.newCall(request).execute();
             handleResponse(fullRequest, ctx, response);
