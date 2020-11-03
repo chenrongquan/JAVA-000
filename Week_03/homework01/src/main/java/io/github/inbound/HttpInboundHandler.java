@@ -1,6 +1,5 @@
 package io.github.inbound;
 
-import io.github.outbound.httpclient4.HttpOutboundHandler;
 import io.github.outbound.okhttp.OkhttpOutboundHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
