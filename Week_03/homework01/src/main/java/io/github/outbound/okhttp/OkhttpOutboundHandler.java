@@ -1,12 +1,16 @@
 package io.github.outbound.okhttp;
 
+import io.github.outbound.IHttpOutboundHandler;
 import io.github.outbound.httpclient4.NamedThreadFactory;
 import io.github.router.HttpEndpointRouter;
 import io.github.router.MyEndpointRouter;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpUtil;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -21,11 +25,11 @@ import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 /**
- * @description: 作业二：整合上次作业的 okhttp
+ * @description: 作业一：整合上次作业的 okhttp
  * @author: chenrq
  * @date: 2020年11月02日 11时49分
  */
-public class OkhttpOutboundHandler {
+public class OkhttpOutboundHandler implements IHttpOutboundHandler {
     private List<String> backendUrls;
     private ExecutorService proxyService;
     private OkHttpClient httpClient;
@@ -55,6 +59,7 @@ public class OkhttpOutboundHandler {
         this.httpClient = new OkHttpClient();
     }
 
+    @Override
     public void handle(final FullHttpRequest fullRequest, final ChannelHandlerContext ctx) {
         final String url = router.route(this.backendUrls) + fullRequest.uri();
         proxyService.submit(() -> fetchGet(fullRequest, ctx, url));
