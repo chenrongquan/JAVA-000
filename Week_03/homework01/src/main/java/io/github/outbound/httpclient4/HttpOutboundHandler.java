@@ -1,5 +1,8 @@
 package io.github.outbound.httpclient4;
 
+import io.github.outbound.IHttpOutboundHandler;
+import io.github.router.HttpEndpointRouter;
+import io.github.router.MyEndpointRouter;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -16,6 +19,8 @@ import org.apache.http.impl.nio.reactor.IOReactorConfig;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.*;
 
 import static io.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
@@ -27,14 +32,20 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
  * @author: chenrq
  * @date: 2020年11月02日 10时48分
  */
-public class HttpOutboundHandler {
+public class HttpOutboundHandler implements IHttpOutboundHandler {
 
     private CloseableHttpAsyncClient httpclient;
     private ExecutorService proxyService;
-    private String backendUrl;
+    private List<String> backendUrls;
+    private HttpEndpointRouter router;
 
     public HttpOutboundHandler(String backendUrl) {
-        this.backendUrl = backendUrl.endsWith("/")?backendUrl.substring(0,backendUrl.length()-1):backendUrl;
+        String[] urls = backendUrl.split(";");
+        backendUrls = new ArrayList<String>(urls.length);
+        for (String url : urls) {
+            url = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+            backendUrls.add(url);
+        }
         int cores = Runtime.getRuntime().availableProcessors() * 2;
         long keepAliveTime = 1000;
         int queueSize = 2048;
@@ -54,10 +65,12 @@ public class HttpOutboundHandler {
                 .setKeepAliveStrategy((response,context) -> 6000)
                 .build();
         httpclient.start();
+        this.router = new MyEndpointRouter();
     }
 
+    @Override
     public void handle(final FullHttpRequest fullRequest, final ChannelHandlerContext ctx) {
-        final String url = this.backendUrl + fullRequest.uri();
+        final String url = router.route(backendUrls) + fullRequest.uri();
         proxyService.submit(() -> fetchGet(fullRequest, ctx, url));
     }
 
